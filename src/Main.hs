@@ -2,6 +2,12 @@ import Prelude hiding (Left, Right, pred)
 import Data.Foldable
 
 data Step = Left | Stay | Right
+data Machine state symbol =
+  Machine { emptySymbol :: symbol
+          , startState  :: state
+          , pred   :: (state -> Bool)
+          , fun    :: (state -> symbol -> (state, symbol, Step)) 
+          }
 data Tape a = Tape [a] a [a] deriving Eq
 instance Foldable Tape where
   foldMap f (Tape ls elm rs) = foldMap f (reverse ls) `mappend` f elm `mappend` foldMap f rs
@@ -23,30 +29,28 @@ currentSymbol (Tape _ elm _) = elm
 
 list2Tape (elm:rs) = Tape [] elm rs
 
-turing :: Eq symbol
-       => symbol
-       -> state
-       -> (state -> Bool)
-       -> (state -> symbol -> (state, symbol, Step))
-       -> [symbol]
-       -> [symbol]
-turing emptySymbol startState pred f rawTape = toList $ result
+turing :: Eq symbol => Machine state symbol -> [symbol] -> [symbol]
+turing machine rawTape = toList $ result
   where
-    result = runTuring startState tape
+    result = runTuring state tape
     tape = list2Tape rawTape
-    runTuring state tape = if pred newState 
+    state = startState machine
+    eSym = emptySymbol machine
+    p = pred machine
+    f = fun machine
+    runTuring state tape = if p newState 
                            then runTuring newState newTape
                            else newTape
       where
         (newState, newSymbol, step) = f state $ currentSymbol tape
-        newTape = move emptySymbol step $ change tape newSymbol
+        newTape = move eSym step $ change tape newSymbol
 
 
 
 data Symbol = A Integer | Heart | V | H | B deriving (Show, Eq)
 data State  = Start | Q1 Integer | Q2 Integer | Q3 | Q4 | Stop deriving Eq
 
-pred = (/=Stop)
+myPred = (/=Stop)
 delta Start (A n) = ((Q1 n), V, Right)
 delta Start Heart = (Q4, Heart, Right)
 delta q@(Q1 _) a@(A _) = (q, a, Right)
@@ -60,12 +64,13 @@ delta Q3 H       = (Q3, H, Left)
 delta Q4 H       = (Q4, H, Right)
 delta _  symbol  = (Stop, symbol, Stay)
 
-myMaschine = turing B Start pred delta
                                                     -- Difference is here        
                                                     --       |  
 correctWord   = [A 1, A 2, A 3, A 4, A 5, Heart, A 1, A 2, A 3, A 4, A 5]
 incorrectWord = [A 1, A 2, A 3, A 4, A 5, Heart, A 1, A 2, A 2, A 4, A 5]
 
+myMaschine = Machine {emptySymbol = B, startState = Start, pred = myPred, fun =  delta}
+
 main = do
-  putStrLn $ show $ myMaschine correctWord
-  putStrLn $ show $ myMaschine incorrectWord
+  putStrLn $ show $ turing myMaschine correctWord
+  putStrLn $ show $ turing myMaschine incorrectWord
