@@ -26,5 +26,7 @@ incorrectWord = [A 1, A 2, A 3, A 4, A 5, Heart, A 1, A 2, A 2, A 4, A 5]
 myMaschine = T.Machine {emptySymbol = B, startState = Start, pred = myPred, fun =  delta}
 
 main = do
+  putStrLn "Should be correct:"
   putStrLn $ show $ T.turing myMaschine correctWord
+  putStrLn "Should be incorrect:"
   putStrLn $ show $ T.turing myMaschine incorrectWord
